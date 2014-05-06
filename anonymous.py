@@ -21,8 +21,9 @@ from email.MIMEText import MIMEText
 from email.MIMEImage import MIMEImage
 
 from config import EMAIL, PASSWORD, SPREADSHEET_NAME, fb_email, fb_pass
+from ban import ban
 
-min_column = 39
+min_column = 63
 
 vdisplay = Xvfb()
 vdisplay.start()
@@ -118,10 +119,18 @@ while True:
     cur_story = worksheet.cell(min_column, 2).value
 
     if cur_story == None:
+        min_column += 1
         continue
     else:
         cur_story = cur_story.encode('utf-8')
         print "[*] current : %s" % min_column
+
+    if any(word in cur_story for word in ban) is True:
+
+        print "[ TRASH DETECTED ]"
+        print "   >>> " + cur_story
+        min_column += 1
+        continue
 
     if worksheet.cell(min_column, 4).value:
         if worksheet.cell(min_column, 4).value.encode('utf-8') != "잔디":
