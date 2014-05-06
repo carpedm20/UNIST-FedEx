@@ -149,7 +149,12 @@ while True:
 
     browser = webdriver.Firefox()
     browser.set_window_size(250,200)
-    browser.get('http://hexa2.iptime.org/~carpedm20/anonymous.php?message=' + cur_story)
+
+    fb_message_url = 'http://hexa2.iptime.org/~carpedm20/anonymous.php?message=' + cur_story.replace('\n','<br/>')
+
+    browser.get(fb_message_url)
+    print "FB_MESSAGE_URL : " + fb_message_url
+
     browser.save_screenshot(file_name)
 
     img = Image.open(file_name)
