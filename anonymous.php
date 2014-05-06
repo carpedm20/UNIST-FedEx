@@ -22,7 +22,13 @@ white-space: normal !important;
     <div class="_50x5">
     </div>
     <a class="profileLink" href="https://www.facebook.com/carpedm20" role="button" data-hover="tooltip" aria-label="오후 6:04 김태훈">
-      <img class="profilePhoto" src="https://fbcdn-profile-a.akamaihd.net/hprofile-ak-frc1/t1.0-1/c14.0.47.47/s40x40/252231_1002029915278_1941483569_t.jpg">
+    <?
+      $n = rand(0,1);
+      if ($n == 1)
+        echo "<img class=\"profilePhoto\" src=\"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-frc1/t1.0-1/c14.0.47.47/s40x40/252231_1002029915278_1941483569_t.jpg\">";
+      else
+        echo "<img class=\"profilePhoto\" src=\"https://fbcdn-profile-a.akamaihd.net/hprofile-ak-ash3/v/t1.0-1/c178.0.604.604/s200x200/600249_1002029915098_1903163647_n.jpg?oh=b05bfdf8a02304daefabea28820af814&oe=53D4BD2F&__gda__=1405339113_5c3983970f3261cac1c69faf004f8b6f\">";
+    ?>
     </a>
   </div>
   <div class="messages">
