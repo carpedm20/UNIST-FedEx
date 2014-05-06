@@ -1,11 +1,17 @@
 #-*- coding: utf-8 -*-
+
+from xvfbwrapper import Xvfb
 import gspread
 import time, datetime
 import facebook
 import mechanize
 import urllib2
 import json
+import atexit
 import sys
+import Image
+
+from selenium import webdriver
 
 from email.MIMEImage import MIMEImage
 from email.mime.multipart import MIMEMultipart
@@ -15,6 +21,52 @@ from email.MIMEText import MIMEText
 from email.MIMEImage import MIMEImage
 
 from config import EMAIL, PASSWORD, SPREADSHEET_NAME, fb_email, fb_pass
+
+min_column = 39
+
+vdisplay = Xvfb()
+vdisplay.start()
+
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+from PyQt4.QtWebKit import *
+
+class Screenshot(QWebView):
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        QWebView.__init__(self)
+        self._loaded = False
+        self.loadFinished.connect(self._loadFinished)
+
+    def capture(self, url, output_file):
+        self.load(QUrl(url))
+        self.wait_load()
+        # set to webpage size
+        frame = self.page().mainFrame()
+        self.page().setViewportSize(frame.contentsSize())
+        # render image
+        image = QImage(self.page().viewportSize(), QImage.Format_ARGB32)
+        painter = QPainter(image)
+        frame.render(painter)
+        painter.end()
+        print 'saving', output_file
+        image.save(output_file)
+
+    def wait_load(self, delay=0):
+        # process app events until page loaded
+        while not self._loaded:
+            self.app.processEvents()
+            time.sleep(delay)
+        self._loaded = False
+
+    def _loadFinished(self, result):
+        self._loaded = True
+
+def exit_handler():
+    print "DEAD"
+    vdisplay.stop()
+
+atexit.register(exit_handler)
 
 facebook_app_link='https://www.facebook.com/dialog/oauth?scope=manage_pages,publish_stream&redirect_uri=http://carpedm20.blogspot.kr&response_type=token&client_id=641444019231608'
 
@@ -60,48 +112,65 @@ gc = gspread.login(EMAIL, PASSWORD)
 
 worksheet = gc.open(SPREADSHEET_NAME).sheet1
 
-min_column = 20
 
 while True:
-    try:
-        cur_story = worksheet.cell(min_column, 2).value
+  try:
+    cur_story = worksheet.cell(min_column, 2).value
 
-        if cur_story == None:
-            continue
-        else:
-            cur_story = cur_story.encode('utf-8')
-            print "[*] current : %s" % min_column
+    if cur_story == None:
+        continue
+    else:
+        cur_story = cur_story.encode('utf-8')
+        print "[*] current : %s" % min_column
 
-        if worksheet.cell(min_column, 4).value:
-            if worksheet.cell(min_column, 4).value.encode('utf-8') != "잔디":
-                min_column += 1
-                continue
-        else:
+    if worksheet.cell(min_column, 4).value:
+        if worksheet.cell(min_column, 4).value.encode('utf-8') != "잔디":
             min_column += 1
             continue
-
-        cur_tag_hash_string = ""
-
-        if worksheet.cell(min_column, 3).value:
-            cur_tag_string = worksheet.cell(min_column, 3).value
-            cur_tags = [x.strip().encode('utf-8').replace(' ','_') for x in cur_tag_string.split(',')]
-            cur_tag_hash_string = "#unistfedex_" + " #unistfedex_".join(cur_tags)
-
-        app_access = get_app_access()
-        print " [%] APP_ACCESS : " + app_access
-
-        content = "사연 올리기 : http://goo.gl/8Epbui\r\n\r\n" + cur_story + "\r\n\r\n"
-        content += cur_tag_hash_string
-
-        print " >>> %s" % content
-        print " >>>>>> %s" % cur_tag_hash_string
-
-        graph = facebook.GraphAPI(app_access)
-        graph.put_wall_post(content)
-
+    else:
         min_column += 1
-
-    except:
-        for e in sys.exc_info():
-            print e
         continue
+
+    cur_tag_hash_string = ""
+
+    if worksheet.cell(min_column, 3).value:
+        cur_tag_string = worksheet.cell(min_column, 3).value
+        cur_tags = [x.strip().encode('utf-8').replace(' ','_').replace('@','') for x in cur_tag_string.split(',')]
+        cur_tag_hash_string = "#unistfedex_" + " #unistfedex_".join(cur_tags)
+
+    app_access = get_app_access()
+    print " [%] APP_ACCESS : " + app_access
+
+    #s = Screenshot()
+    #s.capture('http://hexa2.iptime.org/~carpedm20/anonymous.php?message=' + cur_story, 'screenshot.png')
+
+    file_name = 'screenshot.png'
+    new_file_name = 'new.png'
+
+    browser = webdriver.Firefox()
+    browser.set_window_size(250,200)
+    browser.get('http://hexa2.iptime.org/~carpedm20/anonymous.php?message=' + cur_story)
+    browser.save_screenshot(file_name)
+
+    img = Image.open(file_name)
+    width, height = img.size
+
+    new = img.crop((0, 0, 250, height))
+    new.save(new_file_name)
+
+    content = "사연 올리기 : http://goo.gl/8Epbui\r\n\r\n"
+    content += cur_tag_hash_string
+
+    print " >>> %s" % content
+    print " >>>>>> %s" % cur_tag_hash_string
+
+    graph = facebook.GraphAPI(app_access)
+    #graph.put_wall_post(content)
+    graph.put_photo(open(new_file_name), content)
+
+    min_column += 1
+
+  except:
+    for e in sys.exc_info():
+        print e
+    continue
