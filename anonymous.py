@@ -23,7 +23,7 @@ from email.MIMEImage import MIMEImage
 from config import EMAIL, PASSWORD, SPREADSHEET_NAME, fb_email, fb_pass
 from ban import ban
 
-min_column = 63
+min_column = 83
 
 vdisplay = Xvfb()
 vdisplay.start()
@@ -113,20 +113,28 @@ gc = gspread.login(EMAIL, PASSWORD)
 
 worksheet = gc.open(SPREADSHEET_NAME).sheet1
 
+no_more_post = False
+
+print "[*] START"
 
 while True:
   try:
+    #print "[#] Current column : " + str(min_column)
     cur_story = worksheet.cell(min_column, 2).value
 
     if cur_story == None:
-        min_column += 1
+        if no_more_post == False:
+            print "No more post..."
+            no_more_post = True
+        else:
+            pass
         continue
     else:
+        no_more_post = False
         cur_story = cur_story.encode('utf-8')
         print "[*] current : %s" % min_column
 
     if any(word in cur_story for word in ban) is True:
-
         print "[ TRASH DETECTED ]"
         print "   >>> " + cur_story
         min_column += 1
@@ -145,7 +153,15 @@ while True:
     if worksheet.cell(min_column, 3).value:
         cur_tag_string = worksheet.cell(min_column, 3).value
         cur_tags = [x.strip().encode('utf-8').replace(' ','_').replace('@','') for x in cur_tag_string.split(',')]
+
         cur_tag_hash_string = "#unistfedex_" + " #unistfedex_".join(cur_tags)
+
+        if any(word in cur_tag_hash_string for word in ban) is True:
+            print "[ TRASH DETECTED ]"
+            print "   >>> " + cur_story
+            print "   >>> " + cur_tag_hash_string
+            min_column += 1
+            continue
 
     app_access = get_app_access()
     print " [%] APP_ACCESS : " + app_access
